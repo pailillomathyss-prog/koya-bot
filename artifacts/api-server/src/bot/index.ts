@@ -4,6 +4,8 @@ import { registerEvents } from "./events";
 import { registerInviteEvents } from "./events/inviteTracker";
 import { loadCommands } from "./commands";
 import { restoreGiveaways } from "./giveawayStore";
+import { runCatchUp } from "./catchUp";
+import { saveLastSeen } from "./lastSeenStore";
 
 export const client = new Client({
   intents: [
@@ -35,6 +37,15 @@ export async function startBot() {
   logger.info("Discord bot logged in.");
 
   client.once("ready", async () => {
+    logger.info("Bot ready — lancement du rattrapage anti-lien...");
     await restoreGiveaways(client);
+    await runCatchUp(client);
+
+    // Sauvegarde le timestamp toutes les 2 minutes pour minimiser les pertes
+    setInterval(() => saveLastSeen(), 2 * 60 * 1000);
   });
+
+  // Sauvegarde avant extinction propre
+  process.once("SIGTERM", () => { saveLastSeen(); });
+  process.once("SIGINT",  () => { saveLastSeen(); });
 }
